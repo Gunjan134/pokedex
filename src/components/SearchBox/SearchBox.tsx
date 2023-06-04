@@ -1,20 +1,22 @@
-import { ChangeEventHandler } from 'react';
-
-interface SearchBoxProps {
-  placeholder: string;
-  handleChange: ChangeEventHandler<HTMLInputElement>;
-}
+import TextField from '@mui/material/TextField';
+import { ISearchBoxProps } from '../../models/ISearchBoxProps';
 
 export default function SearchBox({
-  placeholder,
+  label,
+  searchTerm,
   handleChange,
-}: SearchBoxProps) {
+}: ISearchBoxProps) {
   return (
-    <input
-      className='search'
-      type='search'
-      placeholder={placeholder}
+    <TextField
+      label={label}
+      value={searchTerm}
       onChange={handleChange}
+      size='small'
+      className='mb-4'
+      inputProps={{ className: 'text-sm' }}
+      InputLabelProps={{
+        className: 'text-sm',
+      }}
     />
   );
 }

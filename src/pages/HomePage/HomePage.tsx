@@ -1,5 +1,5 @@
-import Header from 'components/Header/Header';
-import PokemonTable from 'components/PokemonTable/PokemonTable';
+import Header from '../../components/Header/Header';
+import PokemonTable from '../../components/PokemonTable/PokemonTable';
 
 export default function HomePage() {
   return (

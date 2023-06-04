@@ -1,7 +1,6 @@
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
-import FormControl from '@mui/material/FormControl';
+import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -9,18 +8,17 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TablePagination from '@mui/material/TablePagination';
 import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
-import Paper from '@mui/material/Paper';
-import Select from '@mui/material/Select';
-import { usePokemonData } from '../../hooks/usePokemonData';
+import { SelectChangeEvent } from '@mui/material';
 import { ChangeEvent, useState } from 'react';
+import MultiSelect from '../../components/MultiSelect/MultiSelect';
+import PokemonDetails from '../../components/PokemonDetails/PokemonDetails';
+import SearchBox from '../../components/SearchBox/SearchBox';
+import { pokemonTypes } from '../../constants/pokemonTypes';
+import { usePokemonData } from '../../hooks/usePokemonData';
 import { IPokemon } from '../../models/IPokemon';
 import { IPokemonData } from '../../models/IPokemonData';
-import PokemonDetails from '../../components/PokemonDetails/PokemonDetails';
-import { getTypeClass } from '../../utils/getTypeClass';
 import { IPokemonType } from '../../models/IPokemonType';
-import { SelectChangeEvent } from '@mui/material';
+import { getTypeClass } from '../../utils/getTypeClass';
 
 export default function PokemonTable() {
   const [pokemonData, setPokemonData] = useState<IPokemonData[]>([]);
@@ -31,33 +29,34 @@ export default function PokemonTable() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const { isLoading } = usePokemonData(async (data: IPokemon[]) => {
-    try {
-      const updatedPokemonData = await Promise.all(
-        data.map(async (pokemon: IPokemon) => {
-          const pokemonResponse = await fetch(pokemon.url);
-          const pokemonData = await pokemonResponse.json();
-          return {
-            name: pokemonData.name,
-            avatar: pokemonData.sprites.front_default,
-            type: pokemonData.types[0].type.name,
-            types: pokemonData.types.map(
-              (type: IPokemonType) => type.type.name
-            ),
-            stats: {
-              attack: pokemonData.stats[0].base_stat,
-              defense: pokemonData.stats[1].base_stat,
-              speed: pokemonData.stats[5].base_stat,
-            },
-          };
-        })
-      );
-      setPokemonData(updatedPokemonData);
-    } catch (error) {
-      // TODO: handle this error later
-      // console.error('Error fetching Pokemon data:', error);
-    }
-  });
+  const [isErrorOccurred, setIsErrorOccurred] = useState(false);
+  const { isLoading: isPokemonDataLoading, isError: isPokemonAPIError } =
+    usePokemonData(async (data: IPokemon[]) => {
+      try {
+        const updatedPokemonData = await Promise.all(
+          data.map(async (pokemon: IPokemon) => {
+            const pokemonResponse = await fetch(pokemon.url);
+            const pokemonData = await pokemonResponse.json();
+            return {
+              name: pokemonData.name,
+              avatar: pokemonData.sprites.front_default,
+              type: pokemonData.types[0].type.name,
+              types: pokemonData.types.map(
+                (type: IPokemonType) => type.type.name
+              ),
+              stats: {
+                attack: pokemonData.stats[0].base_stat,
+                defense: pokemonData.stats[1].base_stat,
+                speed: pokemonData.stats[5].base_stat,
+              },
+            };
+          })
+        );
+        setPokemonData(updatedPokemonData);
+      } catch (error) {
+        setIsErrorOccurred(true);
+      }
+    });
 
   // Function to handle the click event and open the modal dialog
   const handleClick = (pokemon: IPokemonData) => {
@@ -104,47 +103,35 @@ export default function PokemonTable() {
     page * rowsPerPage + rowsPerPage
   );
 
-  if (isLoading) {
+  if (isPokemonDataLoading) {
     return (
       <div className='flex h-full w-full justify-center items-center'>
         <CircularProgress size={60} />
       </div>
     );
   }
+
+  if (isPokemonAPIError || isErrorOccurred) {
+    return (
+      <div className='flex h-full w-full justify-center items-center'>
+        Some error occurred, please try again later!
+      </div>
+    );
+  }
+
   return (
     <Box className='w-full flex flex-col justify-center items-center mt-8'>
-      <TextField
+      <SearchBox
         label='Search by Name'
-        value={searchTerm}
-        onChange={handleSearch}
-        style={{ marginBottom: '16px' }}
+        searchTerm={searchTerm}
+        handleChange={handleSearch}
       />
-
-      <FormControl>
-        <Select
-          multiple
-          placeholder='Filter by type'
-          value={selectedTypes as never[]}
-          onChange={handleTypeSelect}
-          renderValue={(selected) => (
-            <div>
-              {selected.map((value) => (
-                <Chip key={value} label={value} />
-              ))}
-            </div>
-          )}
-        >
-          <MenuItem value='normal'>Normal</MenuItem>
-          <MenuItem value='fire'>Fire</MenuItem>
-          <MenuItem value='water'>Water</MenuItem>
-          <MenuItem value='electric'>Electric</MenuItem>
-          <MenuItem value='grass'>Grass</MenuItem>
-          <MenuItem value='poison'>Poison</MenuItem>
-          <MenuItem value='ground'>Ground</MenuItem>
-          <MenuItem value='fairy'>Fairy</MenuItem>
-          <MenuItem value='bug'>Bug</MenuItem>
-        </Select>
-      </FormControl>
+      <MultiSelect
+        placeholder='Filter by type'
+        selectedValues={selectedTypes as never[]}
+        handleChange={handleTypeSelect}
+        menuItems={pokemonTypes}
+      />
       <TableContainer className='max-w-3xl' component={Paper}>
         <Table sx={{ minWidth: 650 }} aria-label='Pokemon table'>
           <TableHead>
@@ -157,38 +144,45 @@ export default function PokemonTable() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {slicedData.map((pokemon: IPokemonData) => (
-              <TableRow
-                key={pokemon.name}
-                sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                onClick={() => handleClick(pokemon)}
-              >
-                <TableCell component='th' scope='row'>
-                  {pokemon.name}
+            {slicedData.length > 0 ? (
+              slicedData.map((pokemon: IPokemonData) => (
+                <TableRow
+                  key={pokemon.name}
+                  onClick={() => handleClick(pokemon)}
+                >
+                  <TableCell component='th' scope='row'>
+                    {pokemon.name}
+                  </TableCell>
+                  <TableCell align='center'>
+                    <img
+                      className='w-24 h-24'
+                      src={pokemon.avatar}
+                      alt={pokemon.name}
+                    />
+                  </TableCell>
+                  <TableCell align='center'>
+                    {pokemon.types.map((type) => (
+                      <div
+                        key={type}
+                        className={`inline-block px-2 py-1 rounded-2xl font-bold ${getTypeClass(
+                          type
+                        )}`}
+                      >
+                        {type}
+                      </div>
+                    ))}
+                  </TableCell>
+                  <TableCell align='center'>{pokemon.stats.attack}</TableCell>
+                  <TableCell align='center'>{pokemon.stats.defense}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className='w-full h-48 text-center'>
+                  No search results found!
                 </TableCell>
-                <TableCell align='center'>
-                  <img
-                    className='w-24 h-24'
-                    src={pokemon.avatar}
-                    alt={pokemon.name}
-                  />
-                </TableCell>
-                <TableCell align='center'>
-                  {pokemon.types.map((type) => (
-                    <div
-                      key={type}
-                      className={`inline-block px-2 py-1 rounded-2xl font-bold ${getTypeClass(
-                        type
-                      )}`}
-                    >
-                      {type}
-                    </div>
-                  ))}
-                </TableCell>
-                <TableCell align='center'>{pokemon.stats.attack}</TableCell>
-                <TableCell align='center'>{pokemon.stats.defense}</TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </TableContainer>

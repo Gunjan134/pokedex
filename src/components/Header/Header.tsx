@@ -14,7 +14,7 @@ export default function Header() {
         <div className='flex'>
           <Avatar alt='username' src={user} className='h-8 w-8' />
           <div className='flex flex-col justify-center ml-2'>
-            <div className='text-orange-600 text-sm font-bold'>John Doe</div>
+            <div className='text-blue-600 text-sm font-bold'>John Doe</div>
           </div>
         </div>
       </Toolbar>
